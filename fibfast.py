@@ -6,7 +6,7 @@ def fibonacci(n):
     else:
         return fibonacci(n-1) + fibonacci(n-2)
 
-print(fibonacci(30))
+print(fibonacci(50))
 
 memory = {0:1, 1:1}
 def fastfib(n):

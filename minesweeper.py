@@ -10,7 +10,7 @@ def clear():
         _ = os.system('clear')
 
 class Minesweeper:
-        
+
     random.seed(os.urandom(4))
 
     def __init__(self):
@@ -42,7 +42,7 @@ class Minesweeper:
                 self.mine_count = int(self.mine_density * self.area)
             case _:
                 print("input valid difficulty"); return False
-                
+
         print("Size: {} rows by {} cols\n{} mines with a density of {}%".format(self.n_row, self.n_col, self.mine_count, int(self.mine_density * 100)))
         return True
 
@@ -56,7 +56,7 @@ class Minesweeper:
         neighbors = [(1,0), (1,1), (0,1), (-1,1), (-1,0), (-1,-1), (0,-1), (1,-1)]
         for _ in range(self.mine_count):
             x,y = coord = random.choice(self.coords)
-            
+
             # check if this location has 5 or more mines around it
             count = 0
             for (i,j) in neighbors:
@@ -108,7 +108,7 @@ class Minesweeper:
                 return True
         else:
             return False
-        
+
     def play(self):
         self.printboard(self.display)
 
@@ -168,7 +168,7 @@ while True:
     if not m.getdifficulty(): continue
     m.initboards()
     m.createmines()
-    
+
     while True:
         m.play()
         if m.lost:

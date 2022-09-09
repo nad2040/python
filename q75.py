@@ -21,7 +21,7 @@ def pairToDset(pair):
     dset1 = set(str(pair[0]))
     dset2 = set(str(pair[1]))
     return dset1.union(dset2)
-    
+
 def hasTwoGoodPairs(pairs):
     comb = combinations(pairs, 2)
     for p in list(comb):
