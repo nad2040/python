@@ -42,34 +42,32 @@ class Matrix:
         '''inplace matrix multiplication'''
         self = self.__matmul__(other)
         return self
-    
+
     def __mul__(self, other):
         '''matrix multiplied by constant'''
         if isinstance(other, float) or isinstance(other, int):
             return Matrix([[self.matrix[row][col]*other for col in range(len(self.matrix[0]))] for row in range(len(self.matrix))])
         else:
             return None
-    
+
     __rmul__ = __mul__
 
-    def __imul__(self,other):
+    def __imul__(self, other):
         '''inplace constant multiplication'''
         self = self.__mul__(other)
         return self
 
-
-    def __truediv__(self,other):
+    def __truediv__(self, other):
         '''matrix divided by constant'''
         if isinstance(other, float) or isinstance(other, int):
             return Matrix([[self.matrix[row][col]/other for col in range(len(self.matrix[0]))] for row in range(len(self.matrix))])
         else:
             return None
 
-    def __itruediv__(self,other):
+    def __itruediv__(self, other):
         '''inplace constant division'''
         self = self.__truediv__(other)
         return self
-        
 
     @staticmethod
     def det(matrix):
@@ -112,8 +110,11 @@ class Matrix:
         adjugate = cofactors.T()
 
         return adjugate / deter
-
-
+    
+    def invert(self):
+        '''inverts self inplace'''
+        self = self.inverse()
+        return self
 
 #Example
 m1 = Matrix([
@@ -127,4 +128,6 @@ print(m1.T())
 m2 = (m1 @ m1.inverse() @ m1 @ m1 @ m1.inverse()).T() # m2 is just m1 transposed. again, remember to read left to right, not right to left.
 print(m1 + m2)
 print((m1+m2)*5/4*3/15)
+m2.invert()
+print(m2)
 
