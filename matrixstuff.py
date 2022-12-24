@@ -28,7 +28,7 @@ class Matrix:
         Here's an example: vector @ transformation1 @ transformation2
         '''
         assert self.row == other.col
-        newMat = [[0 for c in range(self.col)] for r in range(other.row)]
+        newMat = [[0 for _ in range(self.col)] for _ in range(other.row)]
         for r in range(other.row):
             for c in range(self.col):
                 sum = 0
@@ -116,18 +116,65 @@ class Matrix:
         self = self.inverse()
         return self
 
+    def eigenvalues(self):
+        '''returns tuple of eigenvalues'''
+        assert self.row == self.col == 2
+        mean = (self.matrix[0][0] + self.matrix[1][1])/2
+        product = Matrix.det(self.matrix)
+        lambda1 = (mean + (mean**2 - product)**0.5)
+        lambda2 = (mean - (mean**2 - product)**0.5)
+        return (lambda1, lambda2)
+
+    def eigenvectors(self):
+        '''returns tuple of two 2x1 column vectors that are scaled by the corresponding eigenvalues when transformed by this matrix'''
+        assert self.row == self.col == 2
+        e1,e2 = self.eigenvalues()
+        ev1 = Matrix([[self.matrix[0][1]], [e1 - self.matrix[0][0]]])
+        ev2 = Matrix([[self.matrix[0][1]], [e2 - self.matrix[0][0]]])
+        return (ev1, ev2) 
+
+    def spectral(self):
+        '''returns the diagonal spectral matrix D in the formula A = MDM^-1 where A is the current matrix'''
+        assert self.row == self.col == 2
+        e1,e2 = self.eigenvalues()
+        return Matrix([[e1,0],[0,e2]])
+
+    def modal(self):
+        '''returns the modal matrix M in the formula A = MDM^-1 where A is the current matrix'''
+        assert self.row == self.col == 2
+        ev1,ev2 = self.eigenvectors()
+        return Matrix([[ev1.matrix[0][0], ev2.matrix[0][0]],[ev1.matrix[1][0], ev2.matrix[1][0]]])
+
+
 #Example
 m1 = Matrix([
-    [2,3],
+    [1,1],
     [1,0]
 ])
 
-print(m1)
-print(m1.inverse())
-print(m1.T())
+print(f"m1\n{m1}")
+print(f"m1 inverted\n{m1.inverse()}")
+print(f"m1 transposed\n{m1.T()}")
 m2 = (m1 @ m1.inverse() @ m1 @ m1 @ m1.inverse()).T() # m2 is just m1 transposed. again, remember to read left to right, not right to left.
-print(m1 + m2)
-print((m1+m2)*5/4*3/15)
+print(f"m2\n{m2}")
+print(f"m1 + m2\n{m1 + m2}")
+print(f"(m1+m2)*5/4*3/15\n{(m1+m2)*5/4*3/15}")
 m2.invert()
-print(m2)
+print(f"inverted m2\n{m2}")
+
+print(f"m1 eigenvalues\n{m1.spectral()}")
+print(f"m1 eigenvectors\n{m1.modal()}")
+
+m3 = Matrix([
+    [1,-3,2],
+    [-2,7,-4],
+    [1,-2,1]
+    ])
+m4 = Matrix([
+    [10,5,2],
+    [7,3,0],
+    [-1,1,4]
+    ])
+
+print(m3 @ m4)
 
