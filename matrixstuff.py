@@ -110,7 +110,7 @@ class Matrix:
         adjugate = cofactors.T()
 
         return adjugate / deter
-    
+
     def invert(self):
         '''inverts self inplace'''
         self = self.inverse()
@@ -131,7 +131,7 @@ class Matrix:
         e1,e2 = self.eigenvalues()
         ev1 = Matrix([[self.matrix[0][1]], [e1 - self.matrix[0][0]]])
         ev2 = Matrix([[self.matrix[0][1]], [e2 - self.matrix[0][0]]])
-        return (ev1, ev2) 
+        return (ev1, ev2)
 
     def spectral(self):
         '''returns the diagonal spectral matrix D in the formula A = MDM^-1 where A is the current matrix'''
@@ -176,5 +176,5 @@ m4 = Matrix([
     [-1,1,4]
     ])
 
-print(m3 @ m4)
+print(m3.inverse())
 
