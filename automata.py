@@ -1,9 +1,7 @@
 from __future__ import annotations
 from collections import defaultdict
-from re import RegexFlag
 
 # credit to Computerphile: https://www.youtube.com/watch?v=32bC33nJR3A
-
 class FA:
     def __init__(self,Q:set,Sigma:set,delta,q0,F):
         self.Q = Q # set of states
@@ -135,7 +133,6 @@ class NFA(FA):
 
     def DFA(self):
         pass
-
 
 N0 = NFA(Q={0,1,2},
          Sigma={"0","1"},
@@ -308,33 +305,86 @@ M = DFA(
     F={3},
 )
 
-dfa_to_re(M)
+# dfa_to_re(M)
 
-from itertools import product,combinations
+from itertools import product,count
+
+def print_dist_pairs(pairs: set, prev_pairs:set, states: list):
+    table = [[' ' for _ in states] for _ in states]
+
+    for s1,s2 in pairs:
+        table[states.index(s1)][states.index(s2)] = 'D' if (s1,s2) not in prev_pairs else 'd'
+
+    print("[ ], " + ", ".join(f"[{s}]" for s in states) + ", ")
+    for i,row in enumerate(table):
+        print(f"[{states[i]}]", end=", ")
+        for j,elem in enumerate(row):
+            if j >= i:
+                if elem != ' ':
+                    print(f"  {elem}",end=", ")
+                else:
+                    print(f"[{elem}]",end=", ")
+            else:
+                print("[ ]",end=", ")
+        print()
 
 def distinguishable(dfa: DFA):
     alphabet = dfa.Sigma
 
+    states = list(dfa.Q)
     non_accept = list(dfa.Q - dfa.F)
     accept = list(dfa.F)
 
+    print("List of states:", states)
+
     distinguishable = set(product(non_accept, accept)) | set(product(accept, non_accept))
+    print("Round 0:", list(sorted(distinguishable)))
+    print_dist_pairs(distinguishable, set(), states)
 
-    not_yet_distinguished = set(product(dfa.Q, dfa.Q)) - distinguishable
+    not_yet_distinguished = set(product(states, states)) - distinguishable
 
-    while True:
+    for round in count(1):
         to_add = set()
         for pair in not_yet_distinguished:
             s1,s2 = pair
             for symbol in alphabet:
                 if (dfa.delta[s1][symbol], dfa.delta[s2][symbol]) in distinguishable:
                     to_add.add((s1,s2))
+        print(f"Round {round}:", list(sorted(to_add)))
         if len(to_add) == 0:
             break
         not_yet_distinguished -= to_add
+        print_dist_pairs(distinguishable | to_add, distinguishable, states)
         distinguishable |= to_add
 
-    return distinguishable, not_yet_distinguished
+    equivalence_classes = []
+    for a,b in not_yet_distinguished:
+        found = False
+        for i,ec in enumerate(equivalence_classes):
+            if a in ec or b in ec:
+                found = True
+                equivalence_classes[i].add(a)
+                equivalence_classes[i].add(b)
+        if not found:
+            equivalence_classes.append({a,b})
+    equivalence_classes = list(map(frozenset, equivalence_classes))
+
+    new_Q = set(equivalence_classes)
+
+    new_delta = {}
+    for s1 in states:
+        for a in alphabet:
+            s2 = dfa.delta[s1][a]
+            first_ec=next(ec for ec in equivalence_classes if s1 in ec)
+            second_ec=next(ec for ec in equivalence_classes if s2 in ec)
+            new_delta[first_ec,a] = second_ec
+
+    new_q0 = next(ec for ec in equivalence_classes if dfa.q0 in ec)
+    new_F = {next(ec for f in dfa.F for ec in equivalence_classes if f in ec)}
+
+    min_dfa = DFA(Q=new_Q,Sigma=alphabet,delta=new_delta,q0=new_q0,F=new_F)
+
+    return distinguishable, not_yet_distinguished, equivalence_classes, min_dfa
 
 M2 = DFA(
     Q={0,1,2,3},
@@ -349,8 +399,143 @@ M2 = DFA(
     F={2,3},
 )
 
-d,nd = distinguishable(M2)
+# d,nd,ecs,mindfa = distinguishable(M2)
+# print(d)
+# print(nd)
+# print(ecs)
+# print(mindfa)
 
-print(d)
+M3 = DFA(
+    Q={1,2,3,4,5,6,7,8,9},
+    Sigma={"a","b"},
+    delta={
+        1:{"a":2,"b":3},
+        2:{"a":5,"b":4},
+        3:{"a":4,"b":9},
+        4:{"a":6,"b":8},
+        5:{"a":2,"b":6},
+        6:{"a":4,"b":7},
+        7:{"a":8,"b":6},
+        8:{"a":7,"b":4},
+        9:{"a":8,"b":3},
+    },
+    q0=1,
+    F={4},
+)
 
-print(nd)
+# d,nd,ecs,mindfa = distinguishable(M3)
+# print("distinguishable",list(sorted(d)))
+# print("indistinguishable",list(sorted(nd)))
+# print("equivalence classes",list(sorted(ecs)))
+# print("minimized DFA",mindfa)
+
+
+from itertools import chain, combinations
+
+@dataclass
+class CFG():
+    V: set[str]
+    Sigma: set[str]
+    R: list[tuple[str, list[str]]]
+    S: str
+
+    def validate(self):
+        assert self.S in self.V
+        return True
+
+    @staticmethod
+    def from_strings(rules: list[str]):
+        EPS = 'ε'
+        V = list()
+        Sigma = set()
+        R = []
+        for rule in rules:
+            rule = rule.split("->")
+            var = rule[0].strip()
+            V.append(var)
+            for prod in list(map(lambda s: s.strip(), rule[1].strip().split('|'))):
+                R.append((var, list(prod)))
+        S = R[0][0]
+        for _,prod in R:
+            for sym in prod:
+                if sym not in V:
+                    Sigma.add(sym)
+
+        if EPS in Sigma:
+            Sigma.remove(EPS)
+
+        return CFG(set(V), Sigma, R, S)
+
+    def to_cnf(self):
+        # FIX: Doesn't work
+        EPS = 'ε'
+        start = self.S
+        vars = self.V
+        rules = self.R
+
+        print("1. Add new start variable - START")
+        vars.add("S0")
+        rules.insert(0, ("S0", [start]))
+
+        print(rules)
+
+        print("2. Epsilon Rule Elimination - DEL")
+
+        to_remove = []
+        for v in vars - {"S0"}:
+            if (v, [EPS]) in rules and (v, [EPS]) not in to_remove:
+                print(f"removing {(v, [EPS])}")
+                to_remove.append((v, [EPS]))
+            for v2, w in rules:
+                # ensured not same variable and skip strings w missing variable v.
+                if v2 == v or v not in w:
+                    continue
+                indices = [i for i in range(len(w)) if w[i] == v]
+                powerset = chain.from_iterable(combinations(indices, r) for r in range(1,len(indices)+1))
+                for subset in powerset:
+                    new_rule = (v2, [s for i,s in enumerate(w) if i not in subset])
+                    if len(new_rule[1]) == 0:
+                        new_rule = (v2, [EPS])
+                    if new_rule[1] == [EPS] and new_rule in to_remove:
+                        continue
+                    rules.append(new_rule)
+        rules = sorted([x for x in rules if x not in to_remove])
+        print(rules)
+
+        print("3. Unit Rule Elimination - UNIT")
+        to_remove = []
+        to_add = []
+        for v, w in rules:
+            if len(w) == 1:
+                v2 = w[0]
+                if v2 not in vars:
+                    continue
+
+                if (v, w) not in to_remove:
+                    to_remove.append((v, w))
+
+                for v3, w2 in rules:
+                    if v3 == v2 and (v3, w2) not in to_remove:
+                        if (v, w2) not in to_add:
+                            to_add.append((v, w2))
+        rules = sorted([x for x in rules + to_add if x not in to_remove])
+        print(rules)
+
+        print("4. Long Rule Elimination - TERM & BIN")
+        for v, w in rules:
+            # TODO: Complete
+            pass
+
+
+cfg = CFG.from_strings(rules=[
+    "S -> aAa | bBb | ε",
+    "A -> C | a",
+    "B -> C | b",
+    "C -> CDA | ε",
+    "D -> A | B | ab",
+])
+
+print(cfg)
+
+cfg.to_cnf()
+
