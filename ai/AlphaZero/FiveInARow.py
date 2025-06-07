@@ -77,8 +77,8 @@ class FiveInARow(gym.Env):
     def is_game_over(self, board):
         return (self.get_winner(board) != 0) or bool(torch.all(board != 0))
 
-    def reset(self, seed=None):
-        super().reset(seed=seed)
+    def reset(self, seed=None, options=None):
+        _ = super().reset(seed=seed, options=options)
         self.board = torch.zeros((self.rows,self.cols))
         self.player = WHITE
         return self.board, {}
@@ -158,7 +158,7 @@ class MCTS_Node:
         _, cols = tuple(self.board.shape)
         if self.action is not None:
             data[0, 2, self.action // cols, self.action % cols] = 1
-        data[0, 3, :, :] = max(self.to_play, 0)
+        data[0, 3, :, :] = self.to_play
         return data
 
     @property
@@ -218,7 +218,7 @@ class MCTS_Node:
         return f"Board: {self.board}\nNext player: {self.to_play}\nDerived policy: {self.derived_policy()}\n" + "\n".join(children)
 
 class MCTS:
-    def __init__(self, c_puct=4, dirichlet_alpha=0.3, dirichlet_epsilon=0.25):
+    def __init__(self, c_puct=5, dirichlet_alpha=0.3, dirichlet_epsilon=0.25):
         self.c_puct = c_puct
         self.dirichlet_alpha = dirichlet_alpha
         self.dirichlet_epsilon = dirichlet_epsilon
@@ -292,7 +292,7 @@ def update_lr_kl(optim: optim.Optimizer, lr, lr_mult, kl_value, kl_threshold = 0
     return lr, lr_mult
 
 class Trainer():
-    def __init__(self, model: Model, game: FiveInARow, c_puct=4, lr=2e-3, mcts_sim=80, epochs=20, batch_size=80, dirichlet_alpha=0.3, dirichlet_epsilon=0.25):
+    def __init__(self, model: Model, game: FiveInARow, c_puct=5, lr=2e-3, mcts_sim=80, epochs=20, batch_size=80, dirichlet_alpha=0.3, dirichlet_epsilon=0.25):
         self.model = model
         self.optim = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
         self.lr = lr
@@ -528,7 +528,7 @@ def eval_agent(args):
 def train(args):
     game = FiveInARow()
     model = Model((game.rows,game.cols))
-    trainer = Trainer(model, game, lr=1e-4, c_puct=4, mcts_sim=80, epochs=20, dirichlet_alpha=0.3, dirichlet_epsilon=0.25)
+    trainer = Trainer(model, game, lr=1e-4, c_puct=5, mcts_sim=80, epochs=20, dirichlet_alpha=0.3, dirichlet_epsilon=0.25)
     if args.iteration != 0:
         trainer.load(best=False, iteration=args.iteration)
     model.train()
