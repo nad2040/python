@@ -223,7 +223,7 @@ class MCTS:
         self.dirichlet_alpha = dirichlet_alpha
         self.dirichlet_epsilon = dirichlet_epsilon
 
-    def run(self, game: FiveInARow, model: Model, root: MCTS_Node, simulations = 80, temperature = 1.0):
+    def run(self, game: FiveInARow, model: Model, root: MCTS_Node, simulations = 200, temperature = 1.0):
         root.predict(model)
         root.expand(game)
         root.apply_dirichlet_noise(self.dirichlet_alpha, self.dirichlet_epsilon)
@@ -245,7 +245,7 @@ class MCTS:
         root.expand(game, ignore_priors=True) # make sure that the node is expanded
         return root.children[action]
 
-def sample_agent_action(mcts, game, node, model, iters=80, temperature=1.0, iteration=0, display=False):
+def sample_agent_action(mcts, game, node, model, iters=200, temperature=1.0, iteration=0, display=False):
     best_node = mcts.run(game, model, node, iters, temperature)
     action = best_node.action
     if display:
@@ -292,7 +292,7 @@ def update_lr_kl(optim: optim.Optimizer, lr, lr_mult, kl_value, kl_threshold = 0
     return lr, lr_mult
 
 class Trainer():
-    def __init__(self, model: Model, game: FiveInARow, c_puct=5, lr=2e-3, mcts_sim=80, epochs=20, batch_size=80, dirichlet_alpha=0.3, dirichlet_epsilon=0.25):
+    def __init__(self, model: Model, game: FiveInARow, c_puct=5, lr=2e-3, mcts_sim=200, epochs=20, batch_size=80, dirichlet_alpha=0.3, dirichlet_epsilon=0.25):
         self.model = model
         self.optim = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
         self.lr = lr
@@ -451,16 +451,16 @@ class Trainer():
             avg_value_loss = np.mean(value_losses)
             print(f"Epoch {epoch+1} | Loss: {avg_loss:.4f} | Policy Loss: {avg_policy_loss:.4f} | Value Loss: {avg_value_loss:.4f}")
 
-            new_predicted_values, new_predicted_policy_logits = self.model(all_state_data)
+            _, new_predicted_policy_logits = self.model(all_state_data)
             new_log_probs = F.log_softmax(new_predicted_policy_logits, dim=0)
 
             kl_value = F.kl_div(input=new_log_probs, target=old_log_probs, log_target=True)
             print(f"{kl_value=}")
 
             if kl_value > self.kl_threshold * 4:  # early stopping if D_KL diverges badly (credit junxiaosong/AlphaZero_Gomoku)
+                self.lr, self.lr_mult = update_lr_kl(self.optim, self.lr, self.lr_mult, kl_value, kl_threshold=self.kl_threshold)
                 break
 
-        self.lr, self.lr_mult = update_lr_kl(self.optim, self.lr, self.lr_mult, kl_value, kl_threshold=self.kl_threshold)
         print(f"Learning rate now {self.lr * self.lr_mult = }")
 
 def eval_agent(args):
@@ -528,7 +528,7 @@ def eval_agent(args):
 def train(args):
     game = FiveInARow()
     model = Model((game.rows,game.cols))
-    trainer = Trainer(model, game, lr=1e-4, c_puct=5, mcts_sim=80, epochs=20, dirichlet_alpha=0.3, dirichlet_epsilon=0.25)
+    trainer = Trainer(model, game, lr=1e-4, c_puct=5, mcts_sim=200, epochs=20, dirichlet_alpha=0.3, dirichlet_epsilon=0.25)
     if args.iteration != 0:
         trainer.load(best=False, iteration=args.iteration)
     model.train()
